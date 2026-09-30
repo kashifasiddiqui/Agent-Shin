@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 from fagent.analyzers.base import BaseAnalyzer
 from fagent.analyzers.code import CodeAnalyzer
 from fagent.analyzers.assets import AssetAnalyzer
+from fagent.analyzers.design import DesignAnalyzer
 from fagent.core.state import StateManager
 from fagent.schemas.finding import (
     AuditReport,
@@ -31,7 +32,9 @@ class AuditEngine:
         self.analyzers: List[BaseAnalyzer] = analyzers or [
             CodeAnalyzer(),
             AssetAnalyzer(),
+            DesignAnalyzer(),
         ]
+
 
     def run_audit(self, graph: ProjectGraph) -> AuditReport:
         all_findings: List[Finding] = []
