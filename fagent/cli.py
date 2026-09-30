@@ -17,6 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
 from fagent.core.state import StateManager
 from fagent.core.audit import AuditEngine
 from fagent.patcher.engine import PatchEngine
+from fagent.browser.verifier import BrowserVerifier
 from fagent.scanner.project import ProjectScanner
 from fagent.schemas.finding import Finding, Severity
 from fagent.schemas.patch import PatchRiskLevel
@@ -402,7 +403,78 @@ def fix(
             console.print(f"  [red]✗[/red] {m}")
 
 
+@app.command()
+def verify(
+    target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
+    url: Optional[str] = typer.Option(None, "--url", help="Base URL of running frontend server (auto-detected if omitted)"),
+    headless: bool = typer.Option(True, "--headless/--no-headless", help="Run browser in headless mode"),
+    save: bool = typer.Option(True, "--save/--no-save", help="Persist findings to .fagent/ directory"),
+):
+    """Run Playwright browser verification across routes, viewports, overflow, and accessibility."""
+    project_root = Path(target).resolve()
+    if not project_root.exists():
+        console.print(f"[bold red]Error:[/bold red] Target directory does not exist: {project_root}")
+        raise typer.Exit(code=1)
+
+    state = StateManager(project_root)
+    graph = state.load_graph()
+    if not graph:
+        with console.status("[bold cyan]Scanning project graph first...", spinner="dots"):
+            scanner = ProjectScanner(project_root)
+            graph = scanner.scan()
+            if save:
+                state.save_graph(graph)
+
+    with console.status("[bold cyan]Launching Playwright Chromium & crawling routes across viewports...", spinner="dots"):
+        verifier = BrowserVerifier(project_root, headless=headless)
+        findings, audit_data = verifier.run_browser_verification(graph, base_url=url)
+
+    if audit_data.get("status") == "error":
+        console.print(
+            Panel.fit(
+                f"[bold red]Dev server not detected![/bold red]\n\n"
+                f"{audit_data.get('message')}\n\n"
+                f"Example: start your application with [bold cyan]npm run dev[/bold cyan] in another terminal,\n"
+                f"then run [bold cyan]fagent verify --url http://localhost:5173[/bold cyan].",
+                title="Browser Verification",
+                border_style="red"
+            )
+        )
+        return
+
+    # Display Verification Results
+    console.print(
+        Panel.fit(
+            f"Inspected Base URL: [bold cyan]{audit_data.get('base_url')}[/bold cyan]\n"
+            f"Routes Inspected: [bold]{len(audit_data.get('routes_inspected', {}))}[/bold]\n"
+            f"Screenshots Captured: [bold]{audit_data.get('total_screenshots', 0)}[/bold]\n"
+            f"Browser Findings: [bold]{len(findings)}[/bold]",
+            title="Browser & Responsive Verification",
+            border_style="green" if not findings else "yellow"
+        )
+    )
+
+    if findings:
+        table = Table(title="Runtime & Responsive Findings", box=box.SIMPLE_HEAVY)
+        table.add_column("ID", style="bold cyan")
+        table.add_column("Category", style="magenta")
+        table.add_column("Severity", style="bold")
+        table.add_column("Route", style="green")
+        table.add_column("Message", style="white")
+
+        for f in findings:
+            table.add_row(f.id, f.category.value, f.severity.value.upper(), f.route or "-", f.message)
+        console.print(table)
+    else:
+        console.print("[bold green][OK] All viewports verified! Zero horizontal overflow or accessibility defects.[/bold green]")
+
+    if save:
+        console.print(f"[dim]Screenshots saved to: {state.fagent_dir / 'screenshots'}[/dim]")
+        console.print(f"[dim]Audit metadata saved to: {state.fagent_dir / 'browser-audit.json'}[/dim]")
+
+
 if __name__ == "__main__":
     app()
+
 
 
