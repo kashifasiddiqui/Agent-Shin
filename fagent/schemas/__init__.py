@@ -4,6 +4,7 @@ from fagent.schemas.project import ProjectInfo, Framework, Language, PackageMana
 from fagent.schemas.graph import ProjectGraph, ComponentNode, RouteNode, AssetNode
 from fagent.schemas.finding import Finding, FindingCategory, Severity, FindingStatus, CategoryScore, AuditReport
 from fagent.schemas.design import DesignSystem, ColorUsage, RadiusUsage
+from fagent.schemas.patch import FilePatch, PatchPlan, PatchRiskLevel, PatchAction
 
 __all__ = [
     "ProjectInfo",
@@ -24,6 +25,11 @@ __all__ = [
     "DesignSystem",
     "ColorUsage",
     "RadiusUsage",
+    "FilePatch",
+    "PatchPlan",
+    "PatchRiskLevel",
+    "PatchAction",
 ]
+
 
 

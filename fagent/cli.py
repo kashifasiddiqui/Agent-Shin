@@ -16,8 +16,10 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from fagent.core.state import StateManager
 from fagent.core.audit import AuditEngine
+from fagent.patcher.engine import PatchEngine
 from fagent.scanner.project import ProjectScanner
-from fagent.schemas.finding import Severity
+from fagent.schemas.finding import Finding, Severity
+from fagent.schemas.patch import PatchRiskLevel
 from fagent import __version__
 
 app = typer.Typer(
@@ -307,6 +309,100 @@ def audit(
         console.print(f"[bold green][OK][/bold green] Saved {len(report.findings)} findings to [dim]{state.fagent_dir / 'findings.json'}[/dim]")
 
 
+@app.command()
+def fix(
+    target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
+    safe_only: bool = typer.Option(True, "--safe-only/--all", help="Apply only safe non-breaking fixes"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Automatically accept patch proposals without prompt"),
+    show_diff: bool = typer.Option(True, "--diff/--no-diff", help="Display patch diff previews"),
+):
+    """Safely apply verified patches to resolve fixable findings."""
+    project_root = Path(target).resolve()
+    if not project_root.exists():
+        console.print(f"[bold red]Error:[/bold red] Target directory does not exist: {project_root}")
+        raise typer.Exit(code=1)
+
+    state = StateManager(project_root)
+    findings_data = state.load_findings()
+    findings = [Finding.model_validate(f) for f in findings_data]
+
+    # If no stored findings, run audit first
+    if not findings:
+        console.print("[dim]No existing audit findings found. Running audit first...[/dim]")
+        graph = state.load_graph()
+        if not graph:
+            scanner = ProjectScanner(project_root)
+            graph = scanner.scan()
+            state.save_graph(graph)
+        audit_engine = AuditEngine(project_root)
+        report = audit_engine.run_audit(graph)
+        state.save_findings(report.findings)
+        state.save_audit_report(report)
+        findings = report.findings
+
+    engine = PatchEngine(project_root)
+    plan = engine.create_plan(findings)
+
+    if not plan.patches:
+        console.print("[bold green][OK] No fixable issues found! Project is clean.[/bold green]")
+        return
+
+    # Filter by risk level
+    allowed_risks = [PatchRiskLevel.SAFE] if safe_only else [PatchRiskLevel.SAFE, PatchRiskLevel.REVIEW]
+    target_patches = [p for p in plan.patches if p.risk_level in allowed_risks]
+
+    console.print(
+        Panel.fit(
+            f"Found [bold]{plan.total_patches}[/bold] fixable issues:\n"
+            f"- [green]{plan.safe_count} safe[/green] (automatic non-breaking fixes)\n"
+            f"- [yellow]{plan.review_count} review required[/yellow] (component/design changes)\n"
+            f"- [red]{plan.high_risk_count} high risk[/red]\n\n"
+            f"Selected for application: [bold cyan]{len(target_patches)} patches[/bold cyan] (allowed: {', '.join(r.value for r in allowed_risks)})",
+            title="FAgent Controlled Patch Engine",
+            border_style="cyan"
+        )
+    )
+
+    if not target_patches:
+        console.print("[yellow]No patches match the selected risk threshold. Run with --all to include review-level fixes.[/yellow]")
+        return
+
+    # Display Diff Previews
+    if show_diff:
+        console.print("\n[bold]Proposed Patch Diffs:[/bold]")
+        for idx, patch in enumerate(target_patches, start=1):
+            console.print(f"\n[cyan]Patch {idx}/{len(target_patches)}: {patch.description}[/cyan] ([dim]{patch.file_path}[/dim])")
+            if patch.diff:
+                for line in patch.diff.splitlines():
+                    if line.startswith("+") and not line.startswith("+++"):
+                        console.print(f"[green]{line}[/green]")
+                    elif line.startswith("-") and not line.startswith("---"):
+                        console.print(f"[red]{line}[/red]")
+                    else:
+                        console.print(f"[dim]{line}[/dim]")
+
+    # Confirmation Gate
+    if not yes:
+        confirm = typer.confirm(f"\nApply {len(target_patches)} patches with Git safety checkpoint?", default=True)
+        if not confirm:
+            console.print("[yellow]Patch application cancelled by user.[/yellow]")
+            return
+
+    with console.status("[bold cyan]Creating Git checkpoint and applying patches...", spinner="dots"):
+        success, applied, msgs = engine.apply_plan_with_safety(plan, allowed_risks=allowed_risks)
+
+    if success:
+        console.print(f"\n[bold green][OK] Successfully applied and verified {len(applied)} patches![/bold green]")
+        for m in msgs:
+            console.print(f"  [green]✓[/green] {m}")
+        console.print("[dim]Decision recorded in .fagent/decisions.json[/dim]")
+    else:
+        console.print(f"\n[bold red][FAILED] Patch application failed verification.[/bold red]")
+        for m in msgs:
+            console.print(f"  [red]✗[/red] {m}")
+
+
 if __name__ == "__main__":
     app()
+
 

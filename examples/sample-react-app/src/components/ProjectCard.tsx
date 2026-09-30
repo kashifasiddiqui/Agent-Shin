@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from './Button';
 
 interface ProjectCardProps {
@@ -18,7 +18,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ title, description, ca
       <h3 className="text-lg font-bold text-gray-900 mt-3">{title}</h3>
       <p className="text-sm text-gray-600 mt-1">{description}</p>
       <div className="mt-2">
-        <a href="https://github.com" target="_blank" className="text-xs text-blue-500 hover:underline">
+        <a href="https://github.com" target="_blank" className="text-xs text-blue-500 hover:underline" rel="noopener noreferrer">
           View Repository
         </a>
       </div>

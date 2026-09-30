@@ -8,12 +8,26 @@ from fagent.schemas.finding import FindingCategory, Severity
 runner = CliRunner()
 
 
-def test_audit_engine_detection():
-    sample_root = Path(__file__).parent.parent / "examples" / "sample-react-app"
-    scanner = ProjectScanner(sample_root)
+def test_audit_engine_detection(tmp_path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir(parents=True)
+
+    code_file = src_dir / "Component.tsx"
+    code_file.write_text(
+        "import React, { useState, useEffect } from 'react';\n"
+        "export const Component = ({ items }: any) => (\n"
+        "  <div>\n"
+        "    <a href=\"https://github.com\" target=\"_blank\">Repo</a>\n"
+        "    {items.map((i: any) => <span>{i}</span>)}\n"
+        "  </div>\n"
+        ");\n",
+        encoding="utf-8"
+    )
+
+    scanner = ProjectScanner(tmp_path)
     graph = scanner.scan()
 
-    engine = AuditEngine(sample_root)
+    engine = AuditEngine(tmp_path)
     report = engine.run_audit(graph)
 
     assert report.total_findings >= 3
@@ -30,9 +44,18 @@ def test_audit_engine_detection():
     assert report.category_scores["code"].high_count >= 1
 
 
-def test_cli_audit_command():
-    sample_root = Path(__file__).parent.parent / "examples" / "sample-react-app"
-    result = runner.invoke(app, ["audit", str(sample_root)])
+def test_cli_audit_command(tmp_path):
+    src_dir = tmp_path / "src"
+    src_dir.mkdir(parents=True)
+
+    code_file = src_dir / "TestCard.tsx"
+    code_file.write_text(
+        "import React, { useEffect } from 'react';\n"
+        "export const TestCard = () => <a target=\"_blank\">Link</a>;\n",
+        encoding="utf-8"
+    )
+
+    result = runner.invoke(app, ["audit", str(tmp_path)])
     assert result.exit_code == 0
     assert "Frontend Quality Audit" in result.stdout
     assert "Overall Quality Score" in result.stdout
