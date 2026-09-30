@@ -14,6 +14,9 @@ DECISIONS_FILE = "decisions.json"
 DESIGN_SYSTEM_FILE = "design-system.json"
 
 
+AUDIT_FILE = "audit.json"
+
+
 class StateManager:
     """Manages reading and writing project-specific .fagent/ metadata."""
 
@@ -64,6 +67,18 @@ class StateManager:
         self._save_json(target, graph.model_dump(mode="json"))
         return target
 
+    def save_findings(self, findings: list) -> Path:
+        target = self.fagent_dir / FINDINGS_FILE
+        data = [f.model_dump(mode="json") if hasattr(f, "model_dump") else f for f in findings]
+        self._save_json(target, data)
+        return target
+
+    def save_audit_report(self, report) -> Path:
+        target = self.fagent_dir / AUDIT_FILE
+        data = report.model_dump(mode="json") if hasattr(report, "model_dump") else report
+        self._save_json(target, data)
+        return target
+
     def load_project_info(self) -> Optional[ProjectInfo]:
         target = self.fagent_dir / PROJECT_FILE
         if not target.exists():
@@ -78,6 +93,18 @@ class StateManager:
         data = self._read_json(target)
         return ProjectGraph.model_validate(data)
 
+    def load_findings(self) -> list:
+        target = self.fagent_dir / FINDINGS_FILE
+        if not target.exists():
+            return []
+        return self._read_json(target)
+
+    def load_audit_report(self) -> Optional[dict]:
+        target = self.fagent_dir / AUDIT_FILE
+        if not target.exists():
+            return None
+        return self._read_json(target)
+
     def _save_json(self, path: Path, data: Any) -> None:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -85,3 +112,4 @@ class StateManager:
     def _read_json(self, path: Path) -> Any:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
+

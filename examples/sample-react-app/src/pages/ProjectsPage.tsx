@@ -33,9 +33,10 @@ export const ProjectsPage: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {projects.map((p) => (
-            <ProjectCard key={p.title} {...p} />
+            <ProjectCard {...p} />
           ))}
         </div>
+
       </div>
     </div>
   );

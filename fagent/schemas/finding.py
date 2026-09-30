@@ -44,3 +44,23 @@ class Finding(BaseModel):
     evidence: Dict[str, Any] = Field(default_factory=dict, description="Concrete deterministic evidence backing this finding")
     fixable: bool = Field(default=False, description="Whether this finding is automatically fixable")
     status: FindingStatus = Field(default=FindingStatus.DETECTED, description="Current lifecycle state of the finding")
+
+
+class CategoryScore(BaseModel):
+    category: FindingCategory = Field(description="Finding category")
+    score: int = Field(ge=0, le=100, description="Score from 0 to 100")
+    total_findings: int = Field(default=0, description="Total findings in this category")
+    critical_count: int = Field(default=0)
+    high_count: int = Field(default=0)
+    medium_count: int = Field(default=0)
+    low_count: int = Field(default=0)
+
+
+class AuditReport(BaseModel):
+    overall_score: int = Field(ge=0, le=100, description="Overall project health score (0-100)")
+    category_scores: Dict[str, CategoryScore] = Field(default_factory=dict)
+    findings: list[Finding] = Field(default_factory=list)
+    total_findings: int = Field(default=0)
+    fixable_findings: int = Field(default=0)
+    created_at: str = Field(description="ISO timestamp of audit completion")
+

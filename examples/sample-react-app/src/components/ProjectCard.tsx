@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 
 interface ProjectCardProps {
@@ -17,6 +17,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ title, description, ca
       </span>
       <h3 className="text-lg font-bold text-gray-900 mt-3">{title}</h3>
       <p className="text-sm text-gray-600 mt-1">{description}</p>
+      <div className="mt-2">
+        <a href="https://github.com" target="_blank" className="text-xs text-blue-500 hover:underline">
+          View Repository
+        </a>
+      </div>
       <div className="mt-4 flex items-center justify-between">
         <Button label={`Like (${likes})`} variant="secondary" onClick={() => setLikes(likes + 1)} />
         <Button label="View Details" variant="primary" />
@@ -24,3 +29,4 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ title, description, ca
     </div>
   );
 };
+

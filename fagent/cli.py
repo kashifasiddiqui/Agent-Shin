@@ -15,7 +15,9 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 from fagent.core.state import StateManager
+from fagent.core.audit import AuditEngine
 from fagent.scanner.project import ProjectScanner
+from fagent.schemas.finding import Severity
 from fagent import __version__
 
 app = typer.Typer(
@@ -191,5 +193,120 @@ def status(
     )
 
 
+@app.command()
+def audit(
+    target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
+    save: bool = typer.Option(True, "--save/--no-save", help="Persist findings to .fagent/findings.json")
+):
+    """Run static and quality analyzers across the project to produce an evidence-backed audit report."""
+    project_root = Path(target).resolve()
+    if not project_root.exists():
+        console.print(f"[bold red]Error:[/bold red] Target directory does not exist: {project_root}")
+        raise typer.Exit(code=1)
+
+    state = StateManager(project_root)
+    graph = state.load_graph()
+
+    # If graph doesn't exist, run scan first
+    if not graph:
+        with console.status("[bold cyan]Scanning project structure first...", spinner="dots"):
+            scanner = ProjectScanner(project_root)
+            graph = scanner.scan()
+            if save:
+                if not state.is_initialized():
+                    state.init_fagent()
+                state.save_project_info(graph.project)
+                state.save_graph(graph)
+
+    with console.status("[bold cyan]Running code and asset intelligence analyzers...", spinner="dots"):
+        engine = AuditEngine(project_root)
+        report = engine.run_audit(graph)
+
+    if save:
+        if not state.is_initialized():
+            state.init_fagent()
+        state.save_findings(report.findings)
+        state.save_audit_report(report)
+
+    # 1. Overall Score Panel
+    score_color = "green" if report.overall_score >= 85 else ("yellow" if report.overall_score >= 70 else "red")
+    console.print(
+        Panel.fit(
+            f"Overall Quality Score: [bold {score_color}]{report.overall_score}%[/bold {score_color}]\n"
+            f"Total Findings: [bold]{report.total_findings}[/bold] ([cyan]{report.fixable_findings} fixable[/cyan])",
+            title="Frontend Quality Audit",
+            border_style=score_color,
+        )
+    )
+
+    # 2. Category Breakdown Table
+    cat_table = Table(title="Category Scores", box=box.ROUNDED)
+    cat_table.add_column("Category", style="cyan")
+    cat_table.add_column("Score", style="bold")
+    cat_table.add_column("Findings", justify="right")
+    cat_table.add_column("Critical", style="bold red", justify="right")
+    cat_table.add_column("High", style="red", justify="right")
+    cat_table.add_column("Medium", style="yellow", justify="right")
+    cat_table.add_column("Low", style="dim", justify="right")
+
+    for cat_name, cat_score in report.category_scores.items():
+        c_color = "green" if cat_score.score >= 85 else ("yellow" if cat_score.score >= 70 else "red")
+        cat_table.add_row(
+            cat_name.capitalize(),
+            f"[{c_color}]{cat_score.score}%[/{c_color}]",
+            str(cat_score.total_findings),
+            str(cat_score.critical_count),
+            str(cat_score.high_count),
+            str(cat_score.medium_count),
+            str(cat_score.low_count),
+        )
+
+    console.print(cat_table)
+
+    # 3. Findings Detail Table
+    if report.findings:
+        find_table = Table(title=f"Detected Findings ({len(report.findings)})", box=box.SIMPLE_HEAVY)
+        find_table.add_column("ID", style="bold cyan")
+        find_table.add_column("Severity", style="bold")
+        find_table.add_column("Category", style="magenta")
+        find_table.add_column("Location", style="dim")
+        find_table.add_column("Message", style="white")
+        find_table.add_column("Fixable", style="green", justify="center")
+
+        severity_colors = {
+            Severity.CRITICAL: "bold red",
+            Severity.HIGH: "red",
+            Severity.MEDIUM: "yellow",
+            Severity.LOW: "dim blue",
+            Severity.INFO: "dim",
+        }
+
+        for f in report.findings[:20]:
+            sev_color = severity_colors.get(f.severity, "white")
+            loc = f.file or "-"
+            if f.line:
+                loc += f":{f.line}"
+
+            find_table.add_row(
+                f.id,
+                f"[{sev_color}]{f.severity.value.upper()}[/{sev_color}]",
+                f.category.value,
+                loc,
+                f.message,
+                "[OK]" if f.fixable else "-",
+            )
+
+        if len(report.findings) > 20:
+            find_table.add_row("...", "", "", "", f"... and {len(report.findings) - 20} more", "")
+
+        console.print(find_table)
+    else:
+        console.print("[bold green][OK] No issues detected! Clean frontend codebase.[/bold green]")
+
+    if save:
+        console.print(f"[bold green][OK][/bold green] Saved {len(report.findings)} findings to [dim]{state.fagent_dir / 'findings.json'}[/dim]")
+
+
 if __name__ == "__main__":
     app()
+
