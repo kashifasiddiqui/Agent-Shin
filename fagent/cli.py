@@ -318,6 +318,8 @@ def audit(
 def fix(
     target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
     safe_only: bool = typer.Option(True, "--safe-only/--all", help="Apply only safe non-breaking fixes"),
+    ai: bool = typer.Option(False, "--ai", help="Enable AI reasoning model to synthesize patches for complex findings"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="OpenRouter model ID for AI patch synthesis"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Automatically accept patch proposals without prompt"),
     show_diff: bool = typer.Option(True, "--diff/--no-diff", help="Display patch diff previews"),
 ):
@@ -346,7 +348,9 @@ def fix(
         findings = report.findings
 
     engine = PatchEngine(project_root)
-    plan = engine.create_plan(findings)
+    if ai:
+        console.print("[bold magenta]AI-Assisted Patch Synthesis enabled (OpenRouter)[/bold magenta]")
+    plan = engine.create_plan(findings, use_ai=ai, model=model)
 
     if not plan.patches:
         console.print("[bold green][OK] No fixable issues found! Project is clean.[/bold green]")
@@ -525,6 +529,8 @@ def heal(
     target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
     max_iterations: int = typer.Option(5, "--max-iterations", "-m", help="Maximum autonomous healing loops"),
     allow_review: bool = typer.Option(False, "--allow-review", help="Allow applying REVIEW-level patches automatically"),
+    ai: bool = typer.Option(False, "--ai", help="Enable AI reasoning model to synthesize patches during healing"),
+    model: Optional[str] = typer.Option(None, "--model", help="OpenRouter model ID for AI patch synthesis"),
 ):
     """Run closed-loop autonomous healing: Audit -> Plan -> Patch -> Verify -> Iterate."""
     project_root = Path(target).resolve()
@@ -532,11 +538,15 @@ def heal(
         console.print(f"[bold red]Error:[/bold red] Target directory does not exist: {project_root}")
         raise typer.Exit(code=1)
 
+    mode_str = "SAFE + REVIEW" if (allow_review or ai) else "SAFE ONLY"
+    if ai:
+        mode_str += " (AI Synthesis Enabled)"
+
     console.print(
         Panel.fit(
             f"Target: [bold cyan]{project_root.name}[/bold cyan]\n"
             f"Max Iterations: [bold]{max_iterations}[/bold]\n"
-            f"Allowed Risk: [bold]{'SAFE + REVIEW' if allow_review else 'SAFE ONLY'}[/bold]\n\n"
+            f"Allowed Risk: [bold]{mode_str}[/bold]\n\n"
             f"The agent will iteratively observe, plan, patch with Git checkpoints, and verify until convergence.",
             title="FAgent Autonomous Healing Loop",
             border_style="cyan"
@@ -544,7 +554,7 @@ def heal(
     )
 
     with console.status("[bold cyan]Executing autonomous healing loop...", spinner="dots"):
-        loop = HealingLoop(project_root, max_iterations=max_iterations, allow_review=allow_review)
+        loop = HealingLoop(project_root, max_iterations=max_iterations, allow_review=allow_review, use_ai=ai, model=model)
         result = loop.run()
 
     console.print(

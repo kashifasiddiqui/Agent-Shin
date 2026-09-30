@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-green.svg)](https://playwright.dev/)
-[![Testing](https://img.shields.io/badge/Tests-22%2F22%20Passing-brightgreen.svg)]()
+[![Testing](https://img.shields.io/badge/Tests-24%2F24%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
 [![Status](https://img.shields.io/badge/Architecture-Complete%20(95%25)-brightgreen.svg)]()
 [![Field Testing](https://img.shields.io/badge/Production%20Validation-Alpha%20(45%25)-orange.svg)]()
@@ -13,11 +13,11 @@
 
 ## 📊 Development & Production Readiness
 
-> ⚠️ **Field Testing Notice**: The complete 11-phase architecture, deterministic engines, browser verifier, and CLI are fully built and verified by **22/22 automated test suites**. However, real-world battle-testing against complex, heterogeneous enterprise repositories (e.g. large Next.js 14/15 apps with monorepos, custom bundlers, and dynamic CSS-in-JS) is actively underway in **Developer Alpha**.
+> ⚠️ **Field Testing Notice**: The complete 11-phase architecture, deterministic engines, browser verifier, and CLI are fully built and verified by **24/24 automated test suites**. However, real-world battle-testing against complex, heterogeneous enterprise repositories (e.g. large Next.js 14/15 apps with monorepos, custom bundlers, and dynamic CSS-in-JS) is actively underway in **Developer Alpha**.
 
 ```text
 [Architecture & Engine Code]      [███████████████████░] 95% (All 11 Phases Implemented)
-[Automated Test Coverage]         [████████████████████] 100% (22/22 Test Suites Passing)
+[Automated Test Coverage]         [████████████████████] 100% (24/24 Test Suites Passing)
 [Real-World Production Testing]   [█████████░░░░░░░░░░░] 45% (Alpha Field Validation)
 ```
 
@@ -165,18 +165,22 @@ Runs deterministic static analyzers across Code, Design, Assets, and Performance
 fagent audit ./my-react-app
 ```
 
-### `fagent fix [TARGET] [--safe-only / --all] [--yes]`
+### `fagent fix [TARGET] [--safe-only / --all] [--ai] [--model MODEL] [--yes]`
 Safely applies verified patches to fix detected findings:
 - Pre-patch Git checkpoint creation.
 - Syntax-highlighted unified diff preview.
+- **AI-Assisted Patch Synthesis**: When `--ai` is enabled, complex findings (like design smells or layout issues) are synthesized into verified code patches using OpenRouter LLMs.
 - Deterministic verification with automated Git rollback on failure.
 - Records verified actions in `.fagent/decisions.json`.
 ```bash
 # Apply only safe, non-breaking fixes automatically
 fagent fix ./my-react-app --safe-only --yes
 
-# Review and apply all fixes (including component changes)
-fagent fix ./my-react-app --all
+# Synthesize AI patches for complex findings using OpenRouter
+fagent fix ./my-react-app --all --ai
+
+# Use a specific model for patch generation
+fagent fix ./my-react-app --all --ai --model anthropic/claude-3.5-sonnet
 ```
 
 ### `fagent verify [TARGET] [--url URL] [--headless]`
@@ -200,10 +204,14 @@ fagent memory ./my-react-app
 fagent memory ./my-react-app --add "Cards use 12px radius" --reason "Design standard"
 ```
 
-### `fagent heal [TARGET] [--max-iterations N] [--allow-review]`
+### `fagent heal [TARGET] [--max-iterations N] [--allow-review] [--ai] [--model MODEL]`
 Autonomous closed-loop healing. Iteratively audits, plans, applies patches with Git checkpoints, and verifies the application until quality goals converge.
 ```bash
+# Deterministic autonomous healing loop
 fagent heal ./my-react-app --max-iterations 3
+
+# Full AI-assisted autonomous healing with LLM reasoning
+fagent heal ./my-react-app --max-iterations 5 --ai
 ```
 
 ---
@@ -218,17 +226,17 @@ pytest --cov=fagent tests/
 ```
 
 ```text
-tests/test_analyzers.py ..          [  9%]
-tests/test_browser.py .             [ 13%]
-tests/test_cli.py .....             [ 36%]
-tests/test_design.py ..             [ 45%]
-tests/test_memory_and_healing.py .. [ 54%]
-tests/test_patcher.py ....          [ 72%]
-tests/test_reasoning.py ...         [ 86%]
+tests/test_analyzers.py ..          [  8%]
+tests/test_browser.py .             [ 12%]
+tests/test_cli.py .....             [ 33%]
+tests/test_design.py ..             [ 41%]
+tests/test_memory_and_healing.py .. [ 50%]
+tests/test_patcher.py ......        [ 75%]
+tests/test_reasoning.py ...         [ 87%]
 tests/test_scanner.py ..            [ 95%]
 tests/test_state.py .               [100%]
 
-===================== 22 passed in 3.35s =====================
+===================== 24 passed in 3.29s =====================
 ```
 
 ---

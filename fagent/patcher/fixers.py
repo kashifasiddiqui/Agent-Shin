@@ -26,6 +26,17 @@ class PatchFixer:
             tag = finding.evidence.get("tag", "")
             return PatchFixer._fix_missing_key(content, tag)
 
+        # 4. Consistent border radius fix
+        if "consistent-border-radius" in finding.evidence.get("rule", ""):
+            dominant = finding.evidence.get("dominant_radius")
+            outlier = finding.evidence.get("outlier_radius")
+            if dominant and outlier:
+                return PatchFixer._fix_border_radius(content, outlier, dominant)
+
+        # 5. Missing alt attribute fix
+        if "missing-alt" in finding.evidence.get("rule", "") or "Missing alt" in finding.message:
+            return PatchFixer._fix_missing_alt(content)
+
         return None
 
     @staticmethod
@@ -61,7 +72,6 @@ class PatchFixer:
                     patched_content=patched_content,
                 )
 
-
         # 2. Unsafe target="_blank" fix (SAFE)
         if "react-jsx-no-target-blank" in finding.evidence.get("rule", "") or "target='_blank'" in finding.message:
             patched_content = PatchFixer._fix_target_blank(original_content)
@@ -95,7 +105,42 @@ class PatchFixer:
                     patched_content=patched_content,
                 )
 
-        # 4. Unreferenced asset deletion (SAFE)
+        # 4. Consistent border radius harmonization (SAFE)
+        if "consistent-border-radius" in finding.evidence.get("rule", ""):
+            dominant = finding.evidence.get("dominant_radius")
+            outlier = finding.evidence.get("outlier_radius")
+            if dominant and outlier:
+                patched_content = PatchFixer._fix_border_radius(original_content, outlier, dominant)
+                if patched_content and patched_content != original_content:
+                    diff = PatchFixer._create_diff(finding.file, original_content, patched_content)
+                    return FilePatch(
+                        finding_id=finding.id,
+                        file_path=finding.file,
+                        risk_level=PatchRiskLevel.SAFE,
+                        action=PatchAction.MODIFY_FILE,
+                        description=f"Harmonize outlier radius '{outlier}' to dominant '{dominant}'",
+                        diff=diff,
+                        original_content=original_content,
+                        patched_content=patched_content,
+                    )
+
+        # 5. Missing image alt tag (SAFE)
+        if "missing-alt" in finding.evidence.get("rule", "") or "Missing alt" in finding.message:
+            patched_content = PatchFixer._fix_missing_alt(original_content)
+            if patched_content and patched_content != original_content:
+                diff = PatchFixer._create_diff(finding.file, original_content, patched_content)
+                return FilePatch(
+                    finding_id=finding.id,
+                    file_path=finding.file,
+                    risk_level=PatchRiskLevel.SAFE,
+                    action=PatchAction.MODIFY_FILE,
+                    description="Add decorative or placeholder alt attribute to image element",
+                    diff=diff,
+                    original_content=original_content,
+                    patched_content=patched_content,
+                )
+
+        # 6. Unreferenced asset deletion (SAFE)
         if finding.category == FindingCategory.ASSET and "unreferenced-asset" in finding.evidence.get("rule", ""):
             diff = f"--- a/{finding.file}\n+++ /dev/null\n@@ -1 +0,0 @@\n-[deleted binary or unreferenced asset]\n"
             return FilePatch(
@@ -184,6 +229,24 @@ class PatchFixer:
 
         return map_pattern.sub(repl, content)
 
+    @staticmethod
+    def _fix_border_radius(content: str, outlier: str, dominant: str) -> str:
+        # e.g. replacing 'rounded-3xl' or 'border-radius: 24px' with dominant
+        pattern = re.compile(r"\b" + re.escape(outlier) + r"\b")
+        return pattern.sub(dominant, content)
+
+    @staticmethod
+    def _fix_missing_alt(content: str) -> str:
+        # Matches <img without alt attribute
+        pattern = re.compile(r"""(<img\s+[^>]*?)(/?>)""", re.IGNORECASE)
+        def repl(match):
+            attrs = match.group(1)
+            closing = match.group(2)
+            if "alt=" not in attrs.lower():
+                return f'{attrs} alt=""{closing}'
+            return match.group(0)
+
+        return pattern.sub(repl, content)
 
     @staticmethod
     def _create_diff(file_path: str, old: str, new: str) -> str:

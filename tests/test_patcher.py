@@ -91,3 +91,18 @@ def test_patch_engine_lifecycle(tmp_path):
     content_after = test_file.read_text(encoding="utf-8")
     assert "useEffect" not in content_after
     assert 'rel="noopener noreferrer"' in content_after
+
+
+def test_fix_border_radius_harmonization():
+    content = '<div className="rounded-3xl p-4 bg-white">Card</div>'
+    patched = PatchFixer._fix_border_radius(content, "rounded-3xl", "rounded-lg")
+    assert "rounded-lg" in patched
+    assert "rounded-3xl" not in patched
+
+
+def test_fix_missing_alt():
+    content = '<img src="/hero.png" className="w-full" />'
+    patched = PatchFixer._fix_missing_alt(content)
+    assert 'alt=""' in patched
+    assert 'src="/hero.png"' in patched
+

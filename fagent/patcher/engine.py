@@ -16,7 +16,12 @@ class PatchEngine:
         self.git_safety = GitSafetyManager(self.project_root)
         self.state = StateManager(self.project_root)
 
-    def create_plan(self, findings: List[Finding]) -> PatchPlan:
+    def create_plan(
+        self,
+        findings: List[Finding],
+        use_ai: bool = False,
+        model: Optional[str] = None
+    ) -> PatchPlan:
         patches: List[FilePatch] = []
         safe_count = 0
         review_count = 0
@@ -25,9 +30,25 @@ class PatchEngine:
         self.findings_map: dict = {}
         for f in findings:
             self.findings_map[f.id] = f
-            if not f.fixable or f.status in {FindingStatus.RESOLVED, FindingStatus.PATCHED}:
+            if f.status in {FindingStatus.RESOLVED, FindingStatus.PATCHED}:
                 continue
-            patch = PatchFixer.generate_patch(self.project_root, f)
+
+            patch = None
+            if f.fixable:
+                patch = PatchFixer.generate_patch(self.project_root, f)
+
+            # If no deterministic patch exists and use_ai is enabled, use LLM reasoning
+            if not patch and use_ai and f.file:
+                try:
+                    from fagent.reasoning.planner import LLMReasoningEngine
+                    from fagent.reasoning.provider import OpenRouterProvider
+                    provider = OpenRouterProvider(model=model)
+                    if provider.is_configured():
+                        reasoner = LLMReasoningEngine(provider=provider)
+                        patch = reasoner.generate_ai_patch(f, self.project_root)
+                except Exception:
+                    patch = None
+
             if patch:
                 patches.append(patch)
                 if patch.risk_level == PatchRiskLevel.SAFE:

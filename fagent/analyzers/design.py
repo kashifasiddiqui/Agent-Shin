@@ -213,6 +213,7 @@ class DesignAnalyzer(BaseAnalyzer):
             sorted_radii = sorted(design_system.radii.values(), key=lambda r: r.count, reverse=True)
             dominant_radius = sorted_radii[0].value
             outliers = [r.value for r in sorted_radii[2:]]
+            
             findings.append(
                 Finding(
                     id=f"DESIGN-{counter:04d}",
@@ -225,11 +226,35 @@ class DesignAnalyzer(BaseAnalyzer):
                         "rule": "consistent-border-radius",
                         "recommendation": f"Standardize component borders around '{dominant_radius}'.",
                     },
-                    fixable=True,
+                    fixable=False,
                     status=FindingStatus.DETECTED,
                 )
             )
             counter += 1
+
+            # File-specific findings for each outlier usage
+            for outlier in outliers:
+                r_usage = design_system.radii.get(outlier)
+                sources = r_usage.sources if r_usage else []
+                for src in sources:
+                    findings.append(
+                        Finding(
+                            id=f"DESIGN-{counter:04d}",
+                            category=FindingCategory.DESIGN,
+                            severity=Severity.LOW,
+                            message=f"Outlier border radius '{outlier}' in {src} deviates from dominant project radius '{dominant_radius}'",
+                            file=src,
+                            evidence={
+                                "dominant_radius": dominant_radius,
+                                "outlier_radius": outlier,
+                                "rule": "consistent-border-radius",
+                                "recommendation": f"Standardize component borders around dominant '{dominant_radius}'.",
+                            },
+                            fixable=True,
+                            status=FindingStatus.DETECTED,
+                        )
+                    )
+                    counter += 1
 
         # 4. Color Palette Coherence / Random Accent Multiplicity
         # If > 5 non-neutral color families are used in Tailwind classes
