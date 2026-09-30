@@ -20,6 +20,8 @@ from fagent.core.memory import ProjectMemory
 from fagent.core.orchestrator import HealingLoop
 from fagent.patcher.engine import PatchEngine
 from fagent.browser.verifier import BrowserVerifier
+from fagent.reasoning.planner import LLMReasoningEngine
+from fagent.reasoning.provider import OpenRouterProvider, DEFAULT_OPENROUTER_MODEL
 from fagent.scanner.project import ProjectScanner
 from fagent.schemas.finding import Finding, Severity
 from fagent.schemas.patch import PatchRiskLevel
@@ -575,8 +577,67 @@ def heal(
         console.print(hist_table)
 
 
+@app.command()
+def explain(
+    finding_id: str = typer.Argument(..., help="The finding ID to explain (e.g. CODE-0001, DESIGN-0001)"),
+    target: str = typer.Option(".", "--target", "-t", help="Target project root directory (default: current directory)"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help=f"OpenRouter model to use (default: {DEFAULT_OPENROUTER_MODEL})"),
+):
+    """Use AI reasoning via OpenRouter to explain an audit finding in depth."""
+    project_root = Path(target).resolve()
+    state = StateManager(project_root)
+    findings_data = state.load_findings()
+
+    target_finding: Optional[Finding] = None
+    for f in findings_data:
+        if f.get("id", "").upper() == finding_id.upper():
+            target_finding = Finding.model_validate(f)
+            break
+
+    if not target_finding:
+        console.print(f"[bold red]Error:[/bold red] Finding '{finding_id}' not found in .fagent/findings.json.")
+        return
+
+    graph = state.load_graph()
+    provider = OpenRouterProvider(model=model)
+
+    if not provider.is_configured():
+        console.print(
+            Panel.fit(
+                f"[bold yellow]OpenRouter API Key Required for AI Reasoning[/bold yellow]\n\n"
+                f"Finding: [bold cyan]{target_finding.id}[/bold cyan] — {target_finding.message}\n"
+                f"Severity: [bold]{target_finding.severity.value.upper()}[/bold] | Category: [magenta]{target_finding.category.value}[/magenta]\n"
+                f"File: [dim]{target_finding.file or 'N/A'}[/dim]\n"
+                f"Evidence: [dim]{target_finding.evidence}[/dim]\n\n"
+                f"To enable AI explanations, obtain a free API key at [link=https://openrouter.ai/keys]https://openrouter.ai/keys[/link]\n"
+                f"and set the environment variable:\n"
+                f"[bold cyan]export OPENROUTER_API_KEY=\"sk-or-v1-...\"[/bold cyan] (or set in Windows Environment).",
+                title="FAgent AI Reasoning",
+                border_style="yellow"
+            )
+        )
+        return
+
+    console.print(f"[dim]Consulting OpenRouter model '{provider.model}'...[/dim]")
+    engine = LLMReasoningEngine(provider=provider)
+    try:
+        with console.status("[bold cyan]Reasoning about finding with AI...", spinner="dots"):
+            explanation = engine.explain_finding(target_finding, graph=graph)
+
+        console.print(
+            Panel(
+                explanation,
+                title=f"AI Engineering Analysis: {target_finding.id} ({provider.model})",
+                border_style="cyan"
+            )
+        )
+    except Exception as e:
+        console.print(f"[bold red]Error querying OpenRouter:[/bold red] {str(e)}")
+
+
 if __name__ == "__main__":
     app()
+
 
 
 

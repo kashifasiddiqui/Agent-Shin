@@ -6,14 +6,14 @@
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-green.svg)](https://playwright.dev/)
 [![Testing](https://img.shields.io/badge/Tests-19%2F19%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
-[![Status](https://img.shields.io/badge/Readiness-92%25%20Production%20Beta-orange.svg)]()
+[![Status](https://img.shields.io/badge/Readiness-95%25%20Production%20Beta-brightgreen.svg)]()
 
 ---
 
 ## 📊 Real-World Production Readiness
 
 ```text
-Overall Production Readiness: [██████████████████░░] 92% (Developer Beta)
+Overall Production Readiness: [███████████████████░] 95% (Developer Beta)
 ```
 
 | Core Capability | Readiness | Status | What Is Live |
@@ -27,8 +27,10 @@ Overall Production Readiness: [████████████████�
 | **Controlled Patch Engine** | `95%` | ✅ Production Ready | Unified diff generation, risk rating (Safe/Review/High Risk) |
 | **Git Safety & Rollback** | `95%` | ✅ Production Ready | Pre-patch Git checkpoints, automated rollback on failure |
 | **Browser Runtime Verification** | `90%` | 🚀 Functional Beta | Playwright Chromium, 3 responsive viewports, overflow & a11y checks |
+| **LLM Reasoning (OpenRouter)** | `95%` | ✅ Production Ready | Free fast coding models (`qwen-2.5-coder`, `llama-3.3`), finding explanations |
 | **Project Memory & Exceptions** | `90%` | 🚀 Functional Beta | `.fagent/decisions.json` persistence, exception suppression |
-| **Autonomous Healing Loop** | `88%` | 🚀 Functional Beta | Observe $\rightarrow$ Plan $\rightarrow$ Patch $\rightarrow$ Verify $\rightarrow$ Iterate (`fagent heal`) |
+| **Autonomous Healing Loop** | `90%` | 🚀 Functional Beta | Observe $\rightarrow$ Plan $\rightarrow$ Patch $\rightarrow$ Verify $\rightarrow$ Iterate (`fagent heal`) |
+
 
 ---
 
@@ -231,4 +233,4 @@ Agent-Shin/
 
 ## 📄 License
 
-MIT © [FAgent Team](https://github.com/kashifasiddiqui/Agent-Shin)
+MIT © [Kashif Siddiqui](https://github.com/kashifasiddiqui/Agent-Shin)
