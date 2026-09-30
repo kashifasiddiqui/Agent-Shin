@@ -106,8 +106,10 @@ class StateManager:
         return self._read_json(target)
 
     def _save_json(self, path: Path, data: Any) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+
 
     def _read_json(self, path: Path) -> Any:
         with open(path, "r", encoding="utf-8") as f:

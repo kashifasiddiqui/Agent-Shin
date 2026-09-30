@@ -16,6 +16,8 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from fagent.core.state import StateManager
 from fagent.core.audit import AuditEngine
+from fagent.core.memory import ProjectMemory
+from fagent.core.orchestrator import HealingLoop
 from fagent.patcher.engine import PatchEngine
 from fagent.browser.verifier import BrowserVerifier
 from fagent.scanner.project import ProjectScanner
@@ -473,8 +475,109 @@ def verify(
         console.print(f"[dim]Audit metadata saved to: {state.fagent_dir / 'browser-audit.json'}[/dim]")
 
 
+@app.command()
+def memory(
+    target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
+    add: Optional[str] = typer.Option(None, "--add", help="Record a new project decision or pattern exception"),
+    reason: Optional[str] = typer.Option(None, "--reason", help="Rationale for recorded decision"),
+):
+    """View or record project decisions, design rules, and approved exceptions."""
+    project_root = Path(target).resolve()
+    if not project_root.exists():
+        console.print(f"[bold red]Error:[/bold red] Target directory does not exist: {project_root}")
+        raise typer.Exit(code=1)
+
+    mem = ProjectMemory(project_root)
+
+    if add:
+        entry = mem.record_decision(decision=add, reason=reason, source="cli-user")
+        console.print(f"[bold green][OK] Decision recorded:[/bold green] {entry['decision']} ([dim]{entry['id']}[/dim])")
+        return
+
+    decisions = mem.get_decisions()
+    if not decisions:
+        console.print("[dim]No decisions recorded in project memory yet.[/dim]")
+        return
+
+    table = Table(title="Project Memory & Approved Decisions", box=box.ROUNDED)
+    table.add_column("ID", style="bold cyan")
+    table.add_column("Decision", style="white")
+    table.add_column("Target File", style="dim")
+    table.add_column("Reason", style="green")
+    table.add_column("Source", style="dim blue")
+
+    for d in decisions:
+        table.add_row(
+            d.get("id", "-"),
+            d.get("decision", "-"),
+            d.get("file") or "-",
+            d.get("reason", "Approved"),
+            d.get("source", "user"),
+        )
+
+    console.print(table)
+
+
+@app.command()
+def heal(
+    target: str = typer.Argument(".", help="Target project root directory (default: current directory)"),
+    max_iterations: int = typer.Option(5, "--max-iterations", "-m", help="Maximum autonomous healing loops"),
+    allow_review: bool = typer.Option(False, "--allow-review", help="Allow applying REVIEW-level patches automatically"),
+):
+    """Run closed-loop autonomous healing: Audit -> Plan -> Patch -> Verify -> Iterate."""
+    project_root = Path(target).resolve()
+    if not project_root.exists():
+        console.print(f"[bold red]Error:[/bold red] Target directory does not exist: {project_root}")
+        raise typer.Exit(code=1)
+
+    console.print(
+        Panel.fit(
+            f"Target: [bold cyan]{project_root.name}[/bold cyan]\n"
+            f"Max Iterations: [bold]{max_iterations}[/bold]\n"
+            f"Allowed Risk: [bold]{'SAFE + REVIEW' if allow_review else 'SAFE ONLY'}[/bold]\n\n"
+            f"The agent will iteratively observe, plan, patch with Git checkpoints, and verify until convergence.",
+            title="FAgent Autonomous Healing Loop",
+            border_style="cyan"
+        )
+    )
+
+    with console.status("[bold cyan]Executing autonomous healing loop...", spinner="dots"):
+        loop = HealingLoop(project_root, max_iterations=max_iterations, allow_review=allow_review)
+        result = loop.run()
+
+    console.print(
+        Panel.fit(
+            f"Iterations Run: [bold]{result['iterations_run']}[/bold]\n"
+            f"Total Fixes Applied: [bold green]{result['total_applied_fixes']}[/bold green]\n"
+            f"Final Quality Score: [bold cyan]{result['final_score']}%[/bold cyan]\n"
+            f"Remaining Findings: [bold]{result['final_findings_count']}[/bold]",
+            title="Autonomous Healing Complete",
+            border_style="green"
+        )
+    )
+
+    if result.get("history"):
+        hist_table = Table(title="Iteration Timeline", box=box.SIMPLE)
+        hist_table.add_column("Iter", style="bold")
+        hist_table.add_column("Score Before", style="dim")
+        hist_table.add_column("Fixes Planned", justify="right")
+        hist_table.add_column("Fixes Applied", justify="right", style="green")
+        hist_table.add_column("Outcome", style="cyan")
+
+        for h in result["history"]:
+            hist_table.add_row(
+                str(h["iteration"]),
+                f"{h['score_before']}%",
+                str(h["fixable_count"]),
+                str(h["applied_count"]),
+                h["status"],
+            )
+        console.print(hist_table)
+
+
 if __name__ == "__main__":
     app()
+
 
 
 
