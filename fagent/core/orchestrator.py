@@ -4,7 +4,6 @@ from fagent.scanner.project import ProjectScanner
 from fagent.core.audit import AuditEngine
 from fagent.core.state import StateManager
 from fagent.core.memory import ProjectMemory
-from fagent.patcher.engine import PatchEngine
 from fagent.schemas.patch import PatchRiskLevel
 
 
@@ -19,6 +18,8 @@ class HealingLoop:
         use_ai: bool = False,
         model: Optional[str] = None
     ):
+        from fagent.patcher.engine import PatchEngine
+
         self.project_root = Path(project_root).resolve()
         self.max_iterations = max_iterations
         self.allow_review = allow_review
