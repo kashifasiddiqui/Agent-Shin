@@ -105,26 +105,7 @@ class PatchFixer:
                     patched_content=patched_content,
                 )
 
-        # 4. Consistent border radius harmonization (SAFE)
-        if "consistent-border-radius" in finding.evidence.get("rule", ""):
-            dominant = finding.evidence.get("dominant_radius")
-            outlier = finding.evidence.get("outlier_radius")
-            if dominant and outlier:
-                patched_content = PatchFixer._fix_border_radius(original_content, outlier, dominant)
-                if patched_content and patched_content != original_content:
-                    diff = PatchFixer._create_diff(finding.file, original_content, patched_content)
-                    return FilePatch(
-                        finding_id=finding.id,
-                        file_path=finding.file,
-                        risk_level=PatchRiskLevel.SAFE,
-                        action=PatchAction.MODIFY_FILE,
-                        description=f"Harmonize outlier radius '{outlier}' to dominant '{dominant}'",
-                        diff=diff,
-                        original_content=original_content,
-                        patched_content=patched_content,
-                    )
-
-        # 5. Missing image alt tag (SAFE)
+        # 4. Missing image alt tag (SAFE)
         if "missing-alt" in finding.evidence.get("rule", "") or "Missing alt" in finding.message:
             patched_content = PatchFixer._fix_missing_alt(original_content)
             if patched_content and patched_content != original_content:
@@ -140,13 +121,13 @@ class PatchFixer:
                     patched_content=patched_content,
                 )
 
-        # 6. Unreferenced asset deletion (SAFE)
+        # 5. Unreferenced asset deletion (REVIEW) - requires human or review confirmation
         if finding.category == FindingCategory.ASSET and "unreferenced-asset" in finding.evidence.get("rule", ""):
             diff = f"--- a/{finding.file}\n+++ /dev/null\n@@ -1 +0,0 @@\n-[deleted binary or unreferenced asset]\n"
             return FilePatch(
                 finding_id=finding.id,
                 file_path=finding.file,
-                risk_level=PatchRiskLevel.SAFE,
+                risk_level=PatchRiskLevel.REVIEW,
                 action=PatchAction.DELETE_FILE,
                 description=f"Delete unreferenced asset '{finding.file}'",
                 diff=diff,

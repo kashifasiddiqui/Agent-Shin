@@ -208,53 +208,32 @@ class DesignAnalyzer(BaseAnalyzer):
             counter += 1
 
         # 3. Border Radius Inconsistency
-        # If project uses >= 4 disparate radii simultaneously across basic cards
-        if len(design_system.radii) >= 4:
-            sorted_radii = sorted(design_system.radii.values(), key=lambda r: r.count, reverse=True)
+        # Filter out pills, circles, and full-radius values (which belong to avatars/badges, not cards/containers)
+        PILL_RADII = {"rounded-full", "9999px", "var(--radius-full)", "50%", "100%"}
+        box_radii = {k: v for k, v in design_system.radii.items() if k not in PILL_RADII}
+
+        if len(box_radii) >= 3:
+            sorted_radii = sorted(box_radii.values(), key=lambda r: r.count, reverse=True)
             dominant_radius = sorted_radii[0].value
-            outliers = [r.value for r in sorted_radii[2:]]
+            outliers = [r.value for r in sorted_radii[1:]]
             
             findings.append(
                 Finding(
                     id=f"DESIGN-{counter:04d}",
                     category=FindingCategory.DESIGN,
                     severity=Severity.MEDIUM,
-                    message=f"Inconsistent border radii detected across project ({len(design_system.radii)} distinct radius values used)",
+                    message=f"Inconsistent border radii detected across containers/cards ({len(box_radii)} distinct radius values used)",
                     evidence={
                         "dominant_radius": dominant_radius,
                         "outlier_radii": outliers,
                         "rule": "consistent-border-radius",
-                        "recommendation": f"Standardize component borders around '{dominant_radius}'.",
+                        "recommendation": f"Standardize component card borders around '{dominant_radius}'.",
                     },
                     fixable=False,
                     status=FindingStatus.DETECTED,
                 )
             )
             counter += 1
-
-            # File-specific findings for each outlier usage
-            for outlier in outliers:
-                r_usage = design_system.radii.get(outlier)
-                sources = r_usage.sources if r_usage else []
-                for src in sources:
-                    findings.append(
-                        Finding(
-                            id=f"DESIGN-{counter:04d}",
-                            category=FindingCategory.DESIGN,
-                            severity=Severity.LOW,
-                            message=f"Outlier border radius '{outlier}' in {src} deviates from dominant project radius '{dominant_radius}'",
-                            file=src,
-                            evidence={
-                                "dominant_radius": dominant_radius,
-                                "outlier_radius": outlier,
-                                "rule": "consistent-border-radius",
-                                "recommendation": f"Standardize component borders around dominant '{dominant_radius}'.",
-                            },
-                            fixable=True,
-                            status=FindingStatus.DETECTED,
-                        )
-                    )
-                    counter += 1
 
         # 4. Color Palette Coherence / Random Accent Multiplicity
         # If > 5 non-neutral color families are used in Tailwind classes
