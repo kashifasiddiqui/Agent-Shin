@@ -6,35 +6,50 @@
 [![Playwright](https://img.shields.io/badge/Playwright-Chromium-green.svg)](https://playwright.dev/)
 [![Testing](https://img.shields.io/badge/Tests-24%2F24%20Passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
-[![Status](https://img.shields.io/badge/Architecture-Complete%20(95%25)-brightgreen.svg)]()
-[![Field Testing](https://img.shields.io/badge/Production%20Validation-Alpha%20(45%25)-orange.svg)]()
+[![Status](https://img.shields.io/badge/Maturity-Early%20Alpha%20(35%25)-red.svg)]()
+[![Field Testing](https://img.shields.io/badge/Field%20Testing-Active%20Fine--Tuning-orange.svg)]()
 
 ---
 
 ## 📊 Development & Production Readiness
 
-> ⚠️ **Field Testing Notice**: The complete 11-phase architecture, deterministic engines, browser verifier, and CLI are fully built and verified by **24/24 automated test suites**. However, real-world battle-testing against complex, heterogeneous enterprise repositories (e.g. large Next.js 14/15 apps with monorepos, custom bundlers, and dynamic CSS-in-JS) is actively underway in **Developer Alpha**.
+> ⚠️ **Field Reality Notice**: While the core engine architecture is implemented and verified by **24/24 unit tests**, real-world validation on actual external production apps (e.g. React 19, Vite, Next.js) demonstrated that **autonomous frontend modifications require substantial fine-tuning**. Visual design nuances (such as container curvature vs. pill badges) cannot be treated with blunt scripts. The product is strictly in **Early Developer Alpha (Experimental)**.
 
 ```text
-[Architecture & Engine Code]      [███████████████████░] 95% (All 11 Phases Implemented)
+[Core Architecture & Engine]      [█████████████████░░░] 85% (Scanners, Patcher, Browser Verifier)
 [Automated Test Coverage]         [████████████████████] 100% (24/24 Test Suites Passing)
-[Real-World Production Testing]   [█████████░░░░░░░░░░░] 45% (Alpha Field Validation)
+[Real-World Production Maturity]  [███████░░░░░░░░░░░░░] 35% (Early Alpha — Active Fine-Tuning)
 ```
 
-| Core Capability | Engine Build | Real-World Status | What Is Live |
+| Core Capability | Engine Build | Real-World Status | Field Notes |
 | :--- | :---: | :---: | :--- |
-| **CLI & State Management** | `100%` | ✅ Ready | Thin Typer CLI, Rich formatting, `.fagent/` state management |
-| **Deterministic Project Scanner** | `95%` | 🧪 Alpha Testing | React, Vite, Next.js, TS/JS, package manager, and asset discovery |
-| **Project Graph (`graph.json`)** | `90%` | 🧪 Alpha Testing | Component hierarchy, `used_in` reverse mapping, route trees |
-| **Code Intelligence** | `95%` | 🧪 Alpha Testing | Unused imports, missing `.map()` keys, unsafe `_blank`, XSS checks |
-| **Design Intelligence** | `85%` | 🧪 Alpha Testing | CSS variable & Tailwind palette extraction, token frequency |
-| **AI-Style UI Smell Detection** | `85%` | 🧪 Alpha Testing | Excessive gradients, frosted glass overuse, border radius drift |
-| **Controlled Patch Engine** | `90%` | 🧪 Alpha Testing | Unified diff generation, risk rating (Safe/Review/High Risk) |
-| **Git Safety & Rollback** | `95%` | ✅ Ready | Pre-patch Git checkpoints, automated rollback on failure |
-| **Browser Runtime Verification** | `85%` | 🧪 Alpha Testing | Playwright Chromium, 3 responsive viewports, overflow & a11y checks |
-| **Project Memory & Exceptions** | `90%` | 🧪 Alpha Testing | `.fagent/decisions.json` persistence, exception suppression |
-| **Autonomous Healing Loop** | `85%` | 🧪 Alpha Testing | Observe $\rightarrow$ Plan $\rightarrow$ Patch $\rightarrow$ Verify $\rightarrow$ Iterate (`fagent heal`) |
-| **LLM Reasoning (OpenRouter)** | `90%` | 🔑 Optional | Free fast coding models (`qwen-2.5-coder`, `llama-3.3`), finding explanations |
+| **CLI & State Management** | `100%` | ✅ Stable | Fast Typer CLI, Rich formatting, `.fagent/` state management |
+| **Deterministic Project Scanner** | `90%` | 🧪 Functional | Discovered 87 files, 38 components, and 10 routes in ~4s on Vite apps |
+| **Project Graph (`graph.json`)** | `85%` | 🧪 Functional | Component hierarchy, reverse import mapping, route discovery |
+| **Code Intelligence** | `90%` | 🧪 Functional | Reliably purges dead imports without touching business logic |
+| **Design Intelligence** | `65%` | ⚠️ Needs Fine-Tuning | Flags palette fragmentation and smells; needs component-aware token categorization |
+| **AI-Style UI Smell Detection** | `60%` | ⚠️ Needs Fine-Tuning | Detects gradients & glassmorphism; must distinguish intentional branding from smells |
+| **Controlled Patch Engine** | `65%` | ⚠️ Needs Fine-Tuning | Safe for dead code; visual styling modifications strictly require manual/human review |
+| **Git Safety & Rollback** | `95%` | ✅ Proven in Field | Instant rollback via checkpoints prevented code regressions during field tests |
+| **Browser Runtime Verification** | `85%` | 🧪 Functional | Headless Playwright Chromium crawls all active routes across 3 device viewports |
+| **Project Memory & Exceptions** | `80%` | 🧪 Alpha | Suppresses re-flagging of intentional project exceptions in `.fagent/decisions.json` |
+| **Autonomous Healing Loop** | `55%` | ⚠️ Experimental | Works for deterministic code bugs; iterative visual healing requires further calibration |
+| **LLM Reasoning (OpenRouter)** | `80%` | 🔑 Operational | Explains design smells and architectural trade-offs using free fast coding models |
+
+---
+
+## 🔬 Real-World Field Validation & Lessons Learned
+
+During live field testing on an external production React 19 + Vite application (`Physiotherapy`), the following critical engineering lessons were established:
+
+1. **A Card is NOT an Avatar (Context-Aware Geometry)**:
+   * *The Problem*: Naive frequency algorithms saw `rounded-full` as the dominant radius because circular avatars and badges were common. Applying that "dominant" radius to rectangular cards flattened and distorted card corners.
+   * *The Fix*: Circular/pill radii (`9999px`, `rounded-full`, `50%`) are now strictly isolated from rectangular card geometry. Visual styling changes are permanently demoted from `SAFE` to `REVIEW`.
+2. **Asset Protection**:
+   * *The Problem*: Simple static regexes flagged dynamic images (e.g. `images/${slug}.jpg`) as "unreferenced", risking asset deletion.
+   * *The Fix*: Asset deletions now require explicit `REVIEW` confirmation and are never executed in automated `--safe-only` mode.
+3. **The Power of Git Checkpoints**:
+   * The automated Git checkpoint mechanism allowed the system to restore 100% of the project's original state instantaneously when a patch plan failed visual expectations.
 
 ---
 
