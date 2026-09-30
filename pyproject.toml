@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fagent"
+version = "0.1.0"
+description = "Agentic Frontend Engineer - Autonomous frontend quality, auditing, and development"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "FAgent Team" }
+]
+dependencies = [
+    "typer>=0.12.3",
+    "rich>=13.7.1",
+    "pydantic>=2.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+browser = [
+    "playwright>=1.43.0",
+]
+
+[project.scripts]
+fagent = "fagent.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
